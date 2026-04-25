@@ -4,6 +4,12 @@ on:
     secrets:
       SNYK_TOKEN:
         required: true
+      MAIL_USERNAME:
+        required: true
+      MAIL_PASSWORD:
+        required: true
+      RECEIVER_MAIL:
+        required: true
 
 jobs:
   sca:
@@ -12,9 +18,45 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run Snyk to check for vulnerabilities
+      - name: Run Snyk SCA Scan
+        id: snyk
         uses: snyk/actions/python-3.10@master
+        continue-on-error: false
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
+
+      - name: Send Email on Success
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ STAGE 2 PASSED: SCA Scan Successful"
+          to: ${{ secrets.RECEIVER_MAIL }}
+          from: "Shareify CI/CD"
+          body: |
+            Excellent! The SCA (Snyk) scan for ${{ github.repository }} has passed with no high-severity vulnerabilities.
+            
+            Stage 2: SCA - COMPLETED
+            Proceeding to Stage 3: Docker Build & Trivy Scan.
+
+      - name: Send Email on Failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "❌ STAGE 2 FAILED: SCA Vulnerabilities Detected"
+          to: ${{ secrets.RECEIVER_MAIL }}
+          from: "Shareify CI/CD"
+          body: |
+            Alert! The SCA (Snyk) scan for ${{ github.repository }} found high-severity vulnerabilities in your dependencies.
+            The pipeline has been stopped.
+            
+            Please check the Actions logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

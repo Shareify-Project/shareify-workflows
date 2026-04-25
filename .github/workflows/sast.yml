@@ -6,6 +6,12 @@ on:
         required: true
       SONAR_HOST_URL:
         required: true
+      MAIL_USERNAME:
+        required: true
+      MAIL_PASSWORD:
+        required: true
+      RECEIVER_MAIL:
+        required: true
 
 jobs:
   sast:
@@ -17,7 +23,45 @@ jobs:
           fetch-depth: 0
 
       - name: SonarQube Scan
+        id: sonar
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Send Email on Success
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ STAGE 1 PASSED: SAST Scan Successful"
+          to: ${{ secrets.RECEIVER_MAIL }}
+          from: "Shareify CI/CD"
+          body: |
+            Great news! The SAST (SonarQube) scan for ${{ github.repository }} has passed.
+            
+            Stage 1: SAST - COMPLETED
+            Proceeding to Stage 2: SCA Scanning.
+            
+            SonarQube Project: ${{ github.repository }}
+            URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Send Email on Failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "❌ STAGE 1 FAILED: SAST Scan Vulnerabilities Found"
+          to: ${{ secrets.RECEIVER_MAIL }}
+          from: "Shareify CI/CD"
+          body: |
+            Critical! The SAST (SonarQube) scan for ${{ github.repository }} has failed.
+            The pipeline has been stopped.
+            
+            Please check the SonarQube dashboard for the full report: ${{ secrets.SONAR_HOST_URL }}
