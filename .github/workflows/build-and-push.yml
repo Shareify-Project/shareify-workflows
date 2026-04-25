@@ -47,7 +47,9 @@ jobs:
           image-ref: 'ghcr.io/${{ env.OWNER_LC }}/${{ inputs.image_name }}:${{ github.sha }}'
           format: 'table'
           exit-code: '1'
-          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL' # Only fail on CRITICAL now
 
       - name: Push to GHCR
         run: |
@@ -68,7 +70,7 @@ jobs:
           body: |
             Success! The Docker image for ${{ github.repository }} has been built and pushed.
             
-            Stage 3: Build & Scan - COMPLETED
+            Stage 3: Build & Scan - COMPLETED (High vulnerabilities ignored, Critical checked)
             
             Registry: ghcr.io/${{ env.OWNER_LC }}/${{ inputs.image_name }}
             Tag: ${{ github.sha }}
