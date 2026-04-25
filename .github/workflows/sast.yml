@@ -4,7 +4,7 @@ on:
     secrets:
       SONAR_TOKEN:
         required: true
-      SONAR_HOST_URL:
+      SONAR_ORGANIZATION:
         required: true
       MAIL_USERNAME:
         required: true
@@ -22,12 +22,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: SonarQube Scan
-        id: sonar
-        uses: sonarsource/sonarqube-scan-action@master
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
 
       - name: Send Email on Success
         if: success()
@@ -37,17 +40,18 @@ jobs:
           server_port: 465
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "✅ STAGE 1 PASSED: SAST Scan Successful"
+          subject: "✅ STAGE 1 PASSED: SonarCloud Scan Successful"
           to: ${{ secrets.RECEIVER_MAIL }}
           from: "Shareify CI/CD"
           body: |
-            Great news! The SAST (SonarQube) scan for ${{ github.repository }} has passed.
+            Great news! The SonarCloud scan for ${{ github.repository }} has passed.
             
             Stage 1: SAST - COMPLETED
             Proceeding to Stage 2: SCA Scanning.
             
-            SonarQube Project: ${{ github.repository }}
-            URL: ${{ secrets.SONAR_HOST_URL }}
+            Organization: ${{ secrets.SONAR_ORGANIZATION }}
+            Project: ${{ github.repository_owner }}_${{ github.event.repository.name }}
+            Dashboard: https://sonarcloud.io/project/overview?id=${{ github.repository_owner }}_${{ github.event.repository.name }}
 
       - name: Send Email on Failure
         if: failure()
@@ -57,11 +61,11 @@ jobs:
           server_port: 465
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "❌ STAGE 1 FAILED: SAST Scan Vulnerabilities Found"
+          subject: "❌ STAGE 1 FAILED: SonarCloud Scan Vulnerabilities Found"
           to: ${{ secrets.RECEIVER_MAIL }}
           from: "Shareify CI/CD"
           body: |
-            Critical! The SAST (SonarQube) scan for ${{ github.repository }} has failed.
+            Critical! The SonarCloud scan for ${{ github.repository }} has failed.
             The pipeline has been stopped.
             
-            Please check the SonarQube dashboard for the full report: ${{ secrets.SONAR_HOST_URL }}
+            Please check the SonarCloud dashboard for details: https://sonarcloud.io/project/overview?id=${{ github.repository_owner }}_${{ github.event.repository.name }}
