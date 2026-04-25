@@ -18,7 +18,20 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check for manifest files
+        id: check_files
+        run: |
+          echo "Checking for supported manifest files..."
+          if [ -f "package.json" ] || [ -f "requirements.txt" ] || [ -f "pom.xml" ] || [ -f "go.mod" ] || [ -f "Gemfile" ] || [ -f "build.gradle" ] || [ -f "composer.json" ] || [ -f "pyproject.toml" ]; then
+            echo "manifest_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Supported manifest file found."
+          else
+            echo "manifest_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No supported manifest files found. Skipping SCA scan."
+          fi
+
       - name: Run Snyk SCA Scan
+        if: steps.check_files.outputs.manifest_exists == 'true'
         id: snyk
         uses: snyk/actions/python-3.10@master
         continue-on-error: false
